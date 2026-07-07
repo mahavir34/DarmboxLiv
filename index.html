@@ -3,79 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DramaBox Downloader</title>
+    <title>DramaBox Downloader & Player</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
-        .card { background-color: #1e293b; padding: 25px; width: 100%; max-width: 440px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
+        .card { background-color: #1e293b; padding: 25px; width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
         h1 { color: #22d3ee; font-size: 24px; margin-bottom: 5px; }
         p { color: #94a3b8; font-size: 13px; margin-bottom: 25px; }
         input { width: 100%; padding: 12px; background-color: #020617; border: 1px solid #475569; border-radius: 8px; color: white; margin-bottom: 15px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background-color: #0891b2; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 15px; }
         button:hover { background-color: #06b6d4; }
-        #resultBox { margin-top: 20px; padding: 15px; background-color: #020617; border: 1px solid #065f46; border-radius: 8px; display: none; }
-        #resultBox p { color: #34d399; font-weight: bold; margin-bottom: 10px; }
-        .download-btn { display: block; width: 100%; padding: 12px; background-color: #059669; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; font-size: 14px; }
-        .download-btn:hover { background-color: #10b981; }
-        .instruction { font-size: 12px; color: #f43f5e; margin-top: 12px; text-align: left; line-height: 1.5; background: #881337; padding: 8px; border-radius: 6px; }
+        #resultBox { margin-top: 20px; display: none; }
+        #resultBox p { color: #34d399; font-weight: bold; margin-bottom: 15px; }
+        /* रिस्पॉन्सिव आईफ्रेम प्लेयर */
+        .player-container { position: relative; width: 100%; padding-bottom: 140%; /* वर्टिकल रील्स/ड्रामा फॉर्मेट के लिए */ height: 0; border-radius: 8px; overflow: hidden; border: 1px solid #475569; background-color: black; }
+        .player-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>DramaBox Downloader</h1>
+        <h1>DramaBox Downloader & Player</h1>
         <p>क्लाउड पावर्ड - नो टर्मक्स रिक्वायर्ड</p>
         
         <input type="text" id="dramaUrl" placeholder="यहाँ ड्रामा लिंक पेस्ट करें...">
-        <button onclick="getLink()">वीडियो लिंक निकालें</button>
+        <button onclick="getLink()">वीडियो लोड करें</button>
 
         <div id="resultBox">
-            <p>✓ वीडियो फ़ाइल मिल गई!</p>
-            <a id="downloadBtn" href="#" target="_blank" class="download-btn">डाउनलोड करें / प्ले करें</a>
-            
-            <div class="instruction">
-                <strong>📌 आवश्यक निर्देश:</strong><br>
-                अगर बटन दबाने पर वापस फोटो खुलती है, तो बटन पर <strong>Long Press (दबाकर रखें)</strong> करें और <strong>"Download Link" (लिंक डाउनलोड करें)</strong> पर क्लिक करें। वीडियो सीधा आपकी गैलरी में सेव हो जाएगा!
+            <p>✓ वीडियो सफलतापूर्वक लोड हो गया!</p>
+            <div class="player-container">
+                <iframe id="dramaPlayer" src="" allowfullscreen allow="autoplay; encrypted-media"></iframe>
             </div>
         </div>
     </div>
 
     <script>
-        async function getLink() {
+        function getLink() {
             const urlInput = document.getElementById('dramaUrl').value;
             const resultBox = document.getElementById('resultBox');
-            const downloadBtn = document.getElementById('downloadBtn');
+            const player = document.getElementById('dramaPlayer');
             
             resultBox.style.display = 'none';
             if(!urlInput) { alert('कृपया पहले लिंक पेस्ट करें!'); return; }
             
-            const urlRegex = /(https?:\/\/[^\s]+)/g;
-            const foundUrls = urlInput.match(urlRegex);
-            if (!foundUrls) { alert('कृपया एक सही URL लिंक डालें!'); return; }
-            const cleanUrl = foundUrls[0];
-            
             try {
-                // सर्वर से केवल लिंक स्क्रैप कर रहे हैं
-                const response = await fetch('/api/download?url=' + encodeURIComponent(cleanUrl));
-                const data = await response.json();
+                const urlParams = new URL(urlInput);
+                const bookId = urlParams.searchParams.get('bid') || urlParams.searchParams.get('bookId');
+                const episodeNum = urlParams.searchParams.get('episodeNumber') || '1';
                 
-                if(data.success && data.video_url) {
-                    let finalUrl = data.video_url;
-                    
-                    // ड्रामाबॉक्स की चालाकी फ्रंटएंड पर ही साफ़ करें (.mp4.jpg को .mp4 बनाना)
-                    if (finalUrl.endsWith('.jpg')) {
-                        finalUrl = finalUrl.substring(0, finalUrl.length - 4);
-                    }
-                    if (finalUrl.includes('.mp4.jpg')) {
-                        finalUrl = finalUrl.replace('.mp4.jpg', '.mp4');
-                    }
-                    
-                    // सीधे यूजर के ब्राउज़र का उपयोग करके फाइल खोलना/डाउनलोड करना
-                    downloadBtn.href = finalUrl;
-                    resultBox.style.display = 'block';
-                } else {
-                    alert('त्रुटि: वीडियो लिंक नहीं मिल पाया।');
+                if (!bookId) {
+                    alert('त्रुटि: लिंक में ड्रामा ID (bid) नहीं मिली!');
+                    return;
                 }
-            } catch(err) {
-                alert('सर्वर एरर: ' + err.message);
+                
+                // ड्रामाबॉक्स का ऑफिशियल वेब-प्लेयर आईफ्रेम रूट जो बिना किसी टोकन के सीधे वीडियो स्ट्रीम करता है
+                const embedUrl = `https://www.dramaboxdb.com/index/play/index.html?bid=${bookId}&episodeNumber=${episodeNum}`;
+                
+                player.src = embedUrl;
+                resultBox.style.display = 'block';
+                
+            } catch (err) {
+                alert('कृपया एक सही ड्रामा यूआरएल लिंक डालें!');
             }
         }
     </script>
