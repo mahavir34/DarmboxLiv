@@ -17,29 +17,43 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // 1. अगर यूजर सीधे डाउनलोड बटन दबाता है, तो हम फाइल को प्रॉक्सी स्ट्रीम करेंगे
+        // 1. जब यूजर हरे बटन पर क्लिक करेगा (Download Mode Active)
         if (downloadMode === 'true') {
-            const videoFileUrl = dramaUrl.replace('.mp4.jpg', '.mp4');
+            // नकली .jpg को साफ़ करना
+            let videoFileUrl = dramaUrl;
+            if (videoFileUrl.endsWith('.jpg')) {
+                videoFileUrl = videoFileUrl.substring(0, videoFileUrl.length - 4);
+            }
+            if (videoFileUrl.includes('.mp4.jpg')) {
+                videoFileUrl = videoFileUrl.replace('.mp4.jpg', '.mp4');
+            }
             
+            // 403 एरर को बाईपास करने के लिए मजबूत मोबाइल हेडर्स जोड़ना
             const videoResponse = await axios({
                 method: 'get',
                 url: videoFileUrl,
                 responseType: 'stream',
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Referer': 'https://www.dramabox.com/'
-                }
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+                    'Accept': '*/*',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Origin': 'https://www.dramaboxapp.com',
+                    'Referer': 'https://www.dramaboxapp.com/',
+                    'Connection': 'keep-alive'
+                },
+                timeout: 15000
             });
 
-            res.setHeader('Content-Disposition', 'attachment; filename="drama_video.mp4"');
+            // ब्राउज़र को मजबूर करना कि वह फाइल को सीधे गैलरी में सेव करे
+            res.setHeader('Content-Disposition', 'attachment; filename="dramabox_video.mp4"');
             res.setHeader('Content-Type', 'video/mp4');
             return videoResponse.data.pipe(res);
         }
 
-        // 2. साधारण रिक्वेस्ट पर पेज से लिंक स्क्रैप करना
+        // 2. लिंक स्क्रैप करने का सामान्य मोड
         const response = await axios.get(dramaUrl, {
             headers: { 
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15'
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36'
             },
             timeout: 10000
         });
@@ -62,6 +76,11 @@ module.exports = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Valid stream link not found' });
         }
     } catch (error) {
+        // अगर फिर भी कोई एरर आए तो साफ़ मैसेज देना
+        if (downloadMode === 'true') {
+            res.setHeader('Content-Type', 'application/json');
+            return res.status(500).json({ success: false, error: 'Download Stream Failed: ' + error.message });
+        }
         return res.status(500).json({ success: false, error: error.message });
     }
 };
