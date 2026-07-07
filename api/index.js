@@ -9,64 +9,59 @@ module.exports = async (req, res) => {
         return res.status(200).end();
     }
 
-    const shareUrl = req.query.url;
-    if (!shareUrl) {
+    const dramaUrl = req.query.url;
+    const downloadMode = req.query.download;
+
+    if (!dramaUrl) {
         return res.status(400).json({ success: false, error: 'URL missing' });
     }
 
     try {
-        // 1. पहले शेयर लिंक से नाटक की असली ID (bookId/bid) और एपिसोड नंबर निकालें
-        const urlParams = new URL(shareUrl);
-        const bookId = urlParams.searchParams.get('bid') || urlParams.searchParams.get('bookId');
-        const episodeNum = urlParams.searchParams.get('episodeNumber') || '1';
-
-        if (!bookId) {
-            return res.status(400).json({ success: false, error: 'लिंक में ड्रामा ID (bid) नहीं मिली' });
-        }
-
-        // 2. सीधे ड्रामाबॉक्स के मोबाइल API सर्वर को हिट करें जहाँ असली वीडियो टोकन होते हैं
-        const apiResponse = await axios.post('https://api.dramaboxapp.com/api/v1/theater/episode/video', {
-            theater_id: bookId,
-            episode_num: parseInt(episodeNum, 10)
-        }, {
-            headers: {
-                'User-Agent': 'DramaBox/2.4.0 (Android; 10)',
-                'Content-Type': 'application/json',
-                'Accept-Encoding': 'gzip'
-            },
-            timeout: 8000
-        });
-
-        const apiData = apiResponse.data;
-        
-        // 3. एपीआई के रिस्पॉन्स से असली वीडियो स्ट्रीम (.m3u8 या .mp4) को निकालना
-        let realVideoUrl = null;
-        if (apiData && apiData.data) {
-            realVideoUrl = apiData.data.video_url || apiData.data.play_url || apiData.data.m3u8_url;
-        }
-
-        // 4. बैकअप: अगर मोबाइल एपीआई फेल हो, तो पुराने वेब पेज से केवल शुद्ध .m3u8 लिंक ढूंढना
-        if (!realVideoUrl) {
-            const webResponse = await axios.get(shareUrl, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10)' }
+        // 1. अगर यूजर सीधे डाउनलोड बटन दबाता है, तो हम फाइल को प्रॉक्सी स्ट्रीम करेंगे
+        if (downloadMode === 'true') {
+            const videoFileUrl = dramaUrl.replace('.mp4.jpg', '.mp4');
+            
+            const videoResponse = await axios({
+                method: 'get',
+                url: videoFileUrl,
+                responseType: 'stream',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Referer': 'https://www.dramabox.com/'
+                }
             });
-            const html = webResponse.data;
-            const m3u8Match = html.match(/['"](https?:\/\/[^'"]+\.m3u8[^'"]*)['"]/i);
-            if (m3u8Match) {
-                realVideoUrl = m3u8Match[1].replace(/\\/g, '');
+
+            res.setHeader('Content-Disposition', 'attachment; filename="drama_video.mp4"');
+            res.setHeader('Content-Type', 'video/mp4');
+            return videoResponse.data.pipe(res);
+        }
+
+        // 2. साधारण रिक्वेस्ट पर पेज से लिंक स्क्रैप करना
+        const response = await axios.get(dramaUrl, {
+            headers: { 
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15'
+            },
+            timeout: 10000
+        });
+        
+        const html = response.data;
+        const rawLinks = html.match(/https?:\/\/[^'"]+\.mp4[^'"]*/gi) || [];
+        let videoUrl = null;
+
+        for (let link of rawLinks) {
+            let cleanLink = link.replace(/\\/g, '');
+            if (!cleanLink.includes('cover') && !cleanLink.includes('poster') && !cleanLink.includes('thumb')) {
+                videoUrl = cleanLink;
+                break;
             }
         }
 
-        if (realVideoUrl) {
-            return res.status(200).json({ success: true, video_url: realVideoUrl });
+        if (videoUrl) {
+            return res.status(200).json({ success: true, video_url: videoUrl });
         } else {
-            return res.status(404).json({ 
-                success: false, 
-                error: 'यह एक प्रीमियम / लॉक्ड एपिसोड है। कृपया कोई फ्री या पहला एपिसोड लिंक ट्राई करें।' 
-            });
+            return res.status(404).json({ success: false, error: 'Valid stream link not found' });
         }
-
     } catch (error) {
-        return res.status(500).json({ success: false, error: 'सर्वर कनेक्ट नहीं हो पाया: ' + error.message });
+        return res.status(500).json({ success: false, error: error.message });
     }
 };
