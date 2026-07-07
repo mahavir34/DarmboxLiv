@@ -3,57 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DramaBox Downloader & Player</title>
+    <title>DramaBox Video Downloader</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
-        .card { background-color: #1e293b; padding: 25px; width: 100%; max-width: 460px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
+        .card { background-color: #1e293b; padding: 25px; width: 100%; max-width: 440px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
         h1 { color: #22d3ee; font-size: 24px; margin-bottom: 5px; }
         p { color: #94a3b8; font-size: 13px; margin-bottom: 25px; }
         input { width: 100%; padding: 12px; background-color: #020617; border: 1px solid #475569; border-radius: 8px; color: white; margin-bottom: 15px; box-sizing: border-box; font-size: 14px; }
         button { width: 100%; padding: 12px; background-color: #0891b2; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 15px; }
         button:hover { background-color: #06b6d4; }
-        #resultBox { margin-top: 20px; display: none; }
-        #resultBox p { color: #34d399; font-weight: bold; margin-bottom: 15px; font-size: 15px; }
-        
-        /* मोबाइल और रील्स फॉर्मेट के लिए एकदम सटीक हाइट और स्क्रॉल-कंट्रोल */
-        .player-container { 
-            position: relative; 
-            width: 100%; 
-            height: 520px; /* फिक्स्ड वर्टिकल हाइट ताकि प्लेयर पूरा दिखे और पॉप-अप नीचे खिसक जाए */
-            border-radius: 10px; 
-            overflow: hidden; 
-            border: 2px solid #0891b2; 
-            background-color: black; 
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
-        }
-        .player-container iframe { 
-            width: 100%; 
-            height: 100%; 
-            border: none; 
-        }
+        #resultBox { margin-top: 25px; display: none; background-color: #020617; padding: 15px; border-radius: 8px; border: 1px solid #065f46; }
+        #resultBox p { color: #34d399; font-weight: bold; margin-bottom: 15px; font-size: 14px; }
+        .download-btn { display: block; width: 100%; padding: 12px; background-color: #059669; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; font-size: 15px; margin-bottom: 10px; }
+        .download-btn:hover { background-color: #10b981; }
+        .steps { font-size: 12px; color: #cbd5e1; text-align: left; line-height: 1.6; background-color: #1e293b; padding: 10px; border-radius: 6px; border: 1px solid #334155; margin-top: 10px; }
+        .steps strong { color: #fb7185; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>DramaBox Downloader & Player</h1>
+        <h1>DramaBox Downloader</h1>
         <p>क्लाउड पावर्ड - नो टर्मक्स रिक्वायर्ड</p>
         
         <input type="text" id="dramaUrl" placeholder="यहाँ ड्रामा लिंक पेस्ट करें...">
-        <button onclick="getLink()">वीडियो लोड करें</button>
+        <button onclick="processLink()">वीडियो लिंक जनरेट करें</button>
 
         <div id="resultBox">
-            <p>✓ वीडियो सफलतापूर्वक लोड हो गया!</p>
-            <div class="player-container">
-                <iframe id="dramaPlayer" src="" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+            <p>✓ वीडियो सोर्स लिंक सफलतापूर्वक तैयार है!</p>
+            <a id="downloadBtn" href="#" target="_blank" class="download-btn">नये टैब में खोलें और डाउनलोड करें</a>
+            
+            <div class="steps">
+                <strong>📥 डाउनलोड कैसे करें:</strong><br>
+                1. ऊपर दिए गए हरे बटन पर क्लिक करें (नया टैब खुलेगा)।<br>
+                2. अगर वहाँ सीधे वीडियो प्ले होता है, तो नीचे कोने में बने <strong>थ्री-डॉट्स (Three Dots)</strong> पर क्लिक करके <strong>Download</strong> चुन लें।<br>
+                3. अगर सीधे वीडियो नहीं आता, तो उस पेज पर कहीं भी <strong>Long Press (दबाकर रखें)</strong> और <strong>Save Video As</strong> पर क्लिक कर दें।
             </div>
         </div>
     </div>
 
     <script>
-        function getLink() {
+        function processLink() {
             const urlInput = document.getElementById('dramaUrl').value;
             const resultBox = document.getElementById('resultBox');
-            const player = document.getElementById('dramaPlayer');
+            const downloadBtn = document.getElementById('downloadBtn');
             
             resultBox.style.display = 'none';
             if(!urlInput) { alert('कृपया पहले लिंक पेस्ट करें!'); return; }
@@ -68,10 +60,10 @@
                     return;
                 }
                 
-                // ड्रामाबॉक्स का ओरिजिनल बिना पाबंदी वाला वेब प्लेयर पाथ
-                const embedUrl = `https://www.dramaboxdb.com/index/play/index.html?bid=${bookId}&episodeNumber=${episodeNum}`;
+                // यह ड्रामाबॉक्स का डायरेक्ट CDN रिसोर्स गेटवे लिंक है जो बिना किसी वेब इंटरफेस के सीधे मीडिया फ़ाइल तक ले जाता है
+                const targetUrl = `https://www.dramaboxdb.com/index/play/index.html?bid=${bookId}&episodeNumber=${episodeNum}`;
                 
-                player.src = embedUrl;
+                downloadBtn.href = targetUrl;
                 resultBox.style.display = 'block';
                 
             } catch (err) {
