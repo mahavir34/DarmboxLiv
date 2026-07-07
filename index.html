@@ -47,15 +47,16 @@
             const cleanUrl = foundUrls[0];
             
             try {
-                const response = await fetch('/api/index?url=' + encodeURIComponent(cleanUrl));
+                // पाथ को बदलकर /api/download कर दिया है ताकि पुराना कैशे क्रैश हो जाए
+                const response = await fetch('/api/download?url=' + encodeURIComponent(cleanUrl));
                 const data = await response.json();
                 
                 if(data.success && data.video_url) {
-                    // डाउनलोड बटन को क्लाउड स्ट्रीम यूआरएल पर सेट करना
-                    downloadBtn.href = '/api/index?download=true&url=' + encodeURIComponent(data.video_url);
+                    // नया डायरेक्ट स्ट्रीम लिंक सेट करें
+                    downloadBtn.href = '/api/download?download=true&url=' + encodeURIComponent(data.video_url);
                     resultBox.style.display = 'block';
                 } else {
-                    alert('त्रुटि: वीडियो लिंक नहीं मिल पाया।');
+                    alert('त्रुटि: ' + (data.error || 'वीडियो लिंक नहीं मिल पाया।'));
                 }
             } catch(err) {
                 alert('सर्वर एरर: ' + err.message);
