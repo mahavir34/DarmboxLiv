@@ -16,24 +16,19 @@
         #resultBox p { color: #34d399; font-weight: bold; margin-bottom: 10px; }
         .download-btn { display: block; width: 100%; padding: 12px; background-color: #059669; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; }
         .download-btn:hover { background-color: #10b981; }
-        #videoPlayer { width: 100%; margin-top: 15px; border-radius: 8px; display: none; border: 1px solid #334155; }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>DramaBox Downloader</h1>
-        <p>क्लाउड पावर्ड - नो टर्मक्स रिक्वायर्ड</p>
+        <p>क्लाउड पावर्ड - डायरेक्ट वीडियो डाउनलोडर</p>
         
         <input type="text" id="dramaUrl" placeholder="यहाँ ड्रामा लिंक पेस्ट करें...">
         <button onclick="getLink()">वीडियो लिंक निकालें</button>
 
         <div id="resultBox">
-            <p>✓ वीडियो लिंक मिल गया!</p>
-            <a id="downloadBtn" href="#" target="_blank" class="download-btn" download="video.mp4">वीडियो डाउनलोड / प्ले करें</a>
-            
-            <video id="videoPlayer" controls autoplay playsinline>
-                आपका ब्राउज़र प्लेयर सपोर्ट नहीं करता।
-            </video>
+            <p>✓ वीडियो फ़ाइल तैयार है!</p>
+            <a id="downloadBtn" href="#" class="download-btn">सीधे गैलरी में डाउनलोड करें</a>
         </div>
     </div>
 
@@ -42,11 +37,8 @@
             const urlInput = document.getElementById('dramaUrl').value;
             const resultBox = document.getElementById('resultBox');
             const downloadBtn = document.getElementById('downloadBtn');
-            const player = document.getElementById('videoPlayer');
             
             resultBox.style.display = 'none';
-            player.style.display = 'none';
-            
             if(!urlInput) { alert('कृपया पहले लिंक पेस्ट करें!'); return; }
             
             const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -58,25 +50,12 @@
                 const response = await fetch('/api/index?url=' + encodeURIComponent(cleanUrl));
                 const data = await response.json();
                 
-                let finalVideoUrl = data.video_url;
-                
-                if (finalVideoUrl) {
-                    // फ्रंटएंड फ़िल्टर: ड्रामाबॉक्स के नकली .jpg एक्सटेंशन को यहीं काट दें
-                    if (finalVideoUrl.endsWith('.jpg')) {
-                        finalVideoUrl = finalVideoUrl.substring(0, finalVideoUrl.length - 4);
-                    }
-                    if (finalVideoUrl.includes('.mp4.jpg')) {
-                        finalVideoUrl = finalVideoUrl.replace('.mp4.jpg', '.mp4');
-                    }
-                    
-                    // शुद्ध वीडियो URL को प्लेयर और बटन में सेट करें
-                    downloadBtn.href = finalVideoUrl;
-                    player.src = finalVideoUrl;
-                    
-                    player.style.display = 'block';
+                if(data.success && data.video_url) {
+                    // डाउनलोड बटन को क्लाउड स्ट्रीम यूआरएल पर सेट करना
+                    downloadBtn.href = '/api/index?download=true&url=' + encodeURIComponent(data.video_url);
                     resultBox.style.display = 'block';
                 } else {
-                    alert('त्रुटि: वीडियो यूआरएल फ़िल्टर नहीं हो सका।');
+                    alert('त्रुटि: वीडियो लिंक नहीं मिल पाया।');
                 }
             } catch(err) {
                 alert('सर्वर एरर: ' + err.message);
