@@ -1,7 +1,5 @@
 {
-  "cleanUrls": true,
   "rewrites": [
     { "source": "/fetch", "destination": "/api/index.js" }
   ]
 }
-
