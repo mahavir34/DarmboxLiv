@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DramaBox Downloader</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #0f172a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
-        .card { background-color: #1e293b; padding: 25px; width: 100%; max-width: 400px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
+        body { font-family: Arial, sans-serif; background-color: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
+        .card { background-color: #1e293b; padding: 25px; width: 100%; max-width: 440px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
         h1 { color: #22d3ee; font-size: 24px; margin-bottom: 5px; }
         p { color: #94a3b8; font-size: 13px; margin-bottom: 25px; }
         input { width: 100%; padding: 12px; background-color: #020617; border: 1px solid #475569; border-radius: 8px; color: white; margin-bottom: 15px; box-sizing: border-box; }
@@ -16,6 +16,9 @@
         #resultBox p { color: #34d399; font-weight: bold; margin-bottom: 10px; }
         .download-btn { display: block; width: 100%; padding: 12px; background-color: #059669; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; }
         .download-btn:hover { background-color: #10b981; }
+        #debugBox { margin-top: 15px; display: none; text-align: left; }
+        #debugBox label { font-size: 12px; color: #a1a1aa; display: block; margin-bottom: 5px; }
+        textarea { width: 100%; height: 120px; background-color: #090d16; color: #38bdf8; border: 1px solid #334155; border-radius: 6px; padding: 8px; font-family: monospace; font-size: 11px; resize: none; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -30,6 +33,11 @@
             <p>✓ वीडियो लिंक मिल गया!</p>
             <a id="downloadBtn" href="#" target="_blank" class="download-btn">वीडियो डाउनलोड / प्ले करें</a>
         </div>
+
+        <div id="debugBox">
+            <label>सर्वर से प्राप्त रॉ (Raw) डेटा:</label>
+            <textarea id="debugText" readonly></textarea>
+        </div>
     </div>
 
     <script>
@@ -37,6 +45,11 @@
             const urlInput = document.getElementById('dramaUrl').value;
             const resultBox = document.getElementById('resultBox');
             const downloadBtn = document.getElementById('downloadBtn');
+            const debugBox = document.getElementById('debugBox');
+            const debugText = document.getElementById('debugText');
+            
+            resultBox.style.display = 'none';
+            debugBox.style.display = 'none';
             
             if(!urlInput) { alert('कृपया पहले लिंक पेस्ट करें!'); return; }
             
@@ -46,15 +59,18 @@
             const cleanUrl = foundUrls[0];
             
             try {
-                // सीधे Vercel API पाथ को हिट कर रहे हैं
                 const response = await fetch('/api/index?url=' + encodeURIComponent(cleanUrl));
                 const data = await response.json();
+                
+                // स्क्रीन पर रॉ डेटा दिखाएँ
+                debugText.value = JSON.stringify(data, null, 2);
+                debugBox.style.display = 'block';
                 
                 if(data.success && data.video_url) {
                     downloadBtn.href = data.video_url;
                     resultBox.style.display = 'block';
-                } else {
-                    alert('त्रुटि: ' + (data.error || 'वीडियो link नहीं मिला।'));
+                } else if (!data.success) {
+                    alert('त्रुटि: ' + data.error);
                 }
             } catch(err) {
                 alert('सर्वर एरर: ' + err.message);
