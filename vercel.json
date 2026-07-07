@@ -1,11 +1,6 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "api/index.js", "use": "@vercel/node" },
-    { "src": "index.html", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/fetch", "dest": "api/index.js" },
-    { "src": "/(.*)", "dest": "index.html" }
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/fetch", "destination": "/api/index.js" }
   ]
 }
