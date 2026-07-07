@@ -14,21 +14,27 @@
         button:hover { background-color: #06b6d4; }
         #resultBox { margin-top: 20px; padding: 15px; background-color: #020617; border: 1px solid #065f46; border-radius: 8px; display: none; }
         #resultBox p { color: #34d399; font-weight: bold; margin-bottom: 10px; }
-        .download-btn { display: block; width: 100%; padding: 12px; background-color: #059669; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; }
+        .download-btn { display: block; width: 100%; padding: 12px; background-color: #059669; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; font-size: 14px; }
         .download-btn:hover { background-color: #10b981; }
+        .instruction { font-size: 12px; color: #f43f5e; margin-top: 12px; text-align: left; line-height: 1.5; background: #881337; padding: 8px; border-radius: 6px; }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>DramaBox Downloader</h1>
-        <p>क्लाउड पावर्ड - डायरेक्ट वीडियो डाउनलोडर</p>
+        <p>क्लाउड पावर्ड - नो टर्मक्स रिक्वायर्ड</p>
         
         <input type="text" id="dramaUrl" placeholder="यहाँ ड्रामा लिंक पेस्ट करें...">
         <button onclick="getLink()">वीडियो लिंक निकालें</button>
 
         <div id="resultBox">
-            <p>✓ वीडियो फ़ाइल तैयार है!</p>
-            <a id="downloadBtn" href="#" class="download-btn">सीधे गैलरी में डाउनलोड करें</a>
+            <p>✓ वीडियो फ़ाइल मिल गई!</p>
+            <a id="downloadBtn" href="#" target="_blank" class="download-btn">डाउनलोड करें / प्ले करें</a>
+            
+            <div class="instruction">
+                <strong>📌 आवश्यक निर्देश:</strong><br>
+                अगर बटन दबाने पर वापस फोटो खुलती है, तो बटन पर <strong>Long Press (दबाकर रखें)</strong> करें और <strong>"Download Link" (लिंक डाउनलोड करें)</strong> पर क्लिक करें। वीडियो सीधा आपकी गैलरी में सेव हो जाएगा!
+            </div>
         </div>
     </div>
 
@@ -47,16 +53,26 @@
             const cleanUrl = foundUrls[0];
             
             try {
-                // पाथ को बदलकर /api/download कर दिया है ताकि पुराना कैशे क्रैश हो जाए
+                // सर्वर से केवल लिंक स्क्रैप कर रहे हैं
                 const response = await fetch('/api/download?url=' + encodeURIComponent(cleanUrl));
                 const data = await response.json();
                 
                 if(data.success && data.video_url) {
-                    // नया डायरेक्ट स्ट्रीम लिंक सेट करें
-                    downloadBtn.href = '/api/download?download=true&url=' + encodeURIComponent(data.video_url);
+                    let finalUrl = data.video_url;
+                    
+                    // ड्रामाबॉक्स की चालाकी फ्रंटएंड पर ही साफ़ करें (.mp4.jpg को .mp4 बनाना)
+                    if (finalUrl.endsWith('.jpg')) {
+                        finalUrl = finalUrl.substring(0, finalUrl.length - 4);
+                    }
+                    if (finalUrl.includes('.mp4.jpg')) {
+                        finalUrl = finalUrl.replace('.mp4.jpg', '.mp4');
+                    }
+                    
+                    // सीधे यूजर के ब्राउज़र का उपयोग करके फाइल खोलना/डाउनलोड करना
+                    downloadBtn.href = finalUrl;
                     resultBox.style.display = 'block';
                 } else {
-                    alert('त्रुटि: ' + (data.error || 'वीडियो लिंक नहीं मिल पाया।'));
+                    alert('त्रुटि: वीडियो लिंक नहीं मिल पाया।');
                 }
             } catch(err) {
                 alert('सर्वर एरर: ' + err.message);
