@@ -1,3 +1,5 @@
+const axios = require('axios');
+
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -13,42 +15,60 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const dramabox = require('@zhadev/dramabox');
-        const ScraperClass = dramabox.DramaBoxScraper || dramabox.default || dramabox;
-        const scraper = new ScraperClass();
+        // सीधे ड्रामाबॉक्स के शेयर लिंक का HTML डाउनलोड कर रहे हैं
+        const response = await axios.get(dramaUrl, {
+            headers: { 
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9'
+            },
+            timeout: 10000
+        });
+        
+        const html = response.data;
+        let videoUrl = null;
 
-        const protoKeys = Object.getOwnPropertyNames(Object.getPrototypeOf(scraper));
-        const epsFuncKey = protoKeys.find(k => k.toLowerCase().includes('ep')) || protoKeys.find(k => k.toLowerCase().includes('list')) || protoKeys[2];
+        // तरीके 1: स्क्रिप्ट टैग्स के अंदर छिपे हुए JSON या वेरिएबल्स को ढूंढना
+        const matchPatterns = [
+            /current_episode_mp4_url\s*=\s*['"]([^'"]+)['"]/i,
+            /play_url\s*=\s*['"]([^'"]+)['"]/i,
+            /video_url\s*=\s*['"]([^'"]+)['"]/i,
+            /"video_url"\s*:\s*"([^"]+)"/i,
+            /"play_url"\s*:\s*"([^"]+)"/i
+        ];
 
-        if (epsFuncKey && typeof scraper[epsFuncKey] === 'function') {
-            const episodes = await scraper[epsFuncKey](dramaUrl);
-            
-            let finalUrl = null;
-
-            // स्मार्ट डिक्शनरी डिटेक्शन लॉजिक
-            if (episodes) {
-                // स्थिति 1: अगर एरे (Array) के रूप में डेटा आया हो
-                if (Array.isArray(episodes) && episodes.length > 0) {
-                    let ep = episodes[0];
-                    finalUrl = ep.video_url || ep.play_url || ep.current_episode_mp4_url || ep.url;
-                } 
-                // स्थिति 2: अगर सीधा ऑब्जेक्ट (Object) हो
-                else {
-                    finalUrl = episodes.video_url || episodes.play_url || episodes.current_episode_mp4_url || episodes.url;
-                }
+        for (let pattern of matchPatterns) {
+            let match = html.match(pattern);
+            if (match && match[1] && !match[1].includes('.jpg') && !match[1].includes('.png') && !match[1].includes('.jpeg')) {
+                videoUrl = match[1].replace(/\\/g, '');
+                break;
             }
-
-            // अगर सीधे यूआरएल मिल गया तो वेल एंड गुड, नहीं तो पूरा ऑब्जेक्ट फ्रंटएंड को डिबग के लिए दे दो
-            if (finalUrl) {
-                return res.status(200).json({ success: true, video_url: finalUrl.replace(/\\/g, '') });
-            } else {
-                return res.status(200).json({ success: true, video_url: null, raw_response: episodes });
-            }
-        } else {
-            return res.status(500).json({ success: false, error: 'स्क्रैपर फंक्शन लोड नहीं हो पाया।' });
         }
 
+        // तरीका 2: अगर वेरिएबल्स नहीं मिले, तो पूरे पेज में से सारे .mp4 और .m3u8 लिंक्स निकाल कर गंदे लिंक्स साफ़ करना
+        if (!videoUrl) {
+            const rawLinks = html.match(/https?:\/\/[^'"]+\.(?:mp4|m3u8)[^'"]*/gi) || [];
+            for (let link of rawLinks) {
+                let cleanLink = link.replace(/\\/g, '');
+                // फ़िल्टर: इमेज वाले कीवर्ड्स को बाहर निकालो
+                if (!cleanLink.includes('cover') && !cleanLink.includes('poster') && !cleanLink.includes('image') && !cleanLink.includes('thumb')) {
+                    videoUrl = cleanLink;
+                    break;
+                }
+            }
+        }
+
+        if (videoUrl) {
+            return res.status(200).json({ success: true, video_url: videoUrl });
+        } else {
+            // डिबग के लिए: अगर कुछ न मिले तो पेज का छोटा हिस्सा भेजें ताकि हम देख सकें कोड कैसा है
+            return res.status(200).json({ 
+                success: false, 
+                error: 'पेज में वीडियो का असली स्ट्रीम लिंक नहीं मिल पाया।',
+                html_preview: html.substring(0, 1000) // पहले 1000 अक्षर
+            });
+        }
     } catch (error) {
-        return res.status(500).json({ success: false, error: 'क्लाउड स्क्रैपर एरर: ' + error.message });
+        return res.status(500).json({ success: false, error: 'क्लाउड फेच एरर: ' + error.message });
     }
 };
