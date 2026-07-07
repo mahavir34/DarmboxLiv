@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DramaBox Downloader</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #0f172a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
-        .card { background-color: #1e293b; padding: 25px; width: 100%; max-width: 400px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
+        body { font-family: Arial, sans-serif; background-color: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
+        .card { background-color: #1e293b; padding: 25px; width: 100%; max-width: 440px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
         h1 { color: #22d3ee; font-size: 24px; margin-bottom: 5px; }
         p { color: #94a3b8; font-size: 13px; margin-bottom: 25px; }
         input { width: 100%; padding: 12px; background-color: #020617; border: 1px solid #475569; border-radius: 8px; color: white; margin-bottom: 15px; box-sizing: border-box; }
@@ -14,8 +14,10 @@
         button:hover { background-color: #06b6d4; }
         #resultBox { margin-top: 20px; padding: 15px; background-color: #020617; border: 1px solid #065f46; border-radius: 8px; display: none; }
         #resultBox p { color: #34d399; font-weight: bold; margin-bottom: 10px; }
-        .download-btn { display: block; width: 100%; padding: 12px; background-color: #059669; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; }
+        .download-btn { display: block; width: 100%; padding: 12px; background-color: #059669; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; margin-bottom: 10px; }
         .download-btn:hover { background-color: #10b981; }
+        .note { font-size: 11px; color: #fb7185; margin-top: 8px; text-align: left; line-height: 1.4; }
+        #videoPlayer { width: 100%; margin-top: 15px; border-radius: 8px; display: none; border: 1px solid #334155; }
     </style>
 </head>
 <body>
@@ -28,7 +30,15 @@
 
         <div id="resultBox">
             <p>✓ वीडियो लिंक मिल गया!</p>
-            <a id="downloadBtn" href="#" target="_blank" class="download-btn">वीडियो डाउनलोड / प्ले करें</a>
+            <a id="downloadBtn" href="#" target="_blank" class="download-btn">नये टैब में खोलें</a>
+            
+            <video id="videoPlayer" controls autoplay>
+                नेविगेटर वीडियो प्लेयर को सपोर्ट नहीं करता।
+            </video>
+            
+            <div class="note">
+                <strong>💡 नोट:</strong> अगर सीधे क्लिक करने पर फोटो खुलती है, तो बटन पर <strong>Long Press (दबाकर रखें)</strong> करें और <strong>"Download Link"</strong> या <strong>"Save Link As"</strong> पर क्लिक करें। वीडियो सीधा डाउनलोड हो जाएगा!
+            </div>
         </div>
     </div>
 
@@ -37,8 +47,11 @@
             const urlInput = document.getElementById('dramaUrl').value;
             const resultBox = document.getElementById('resultBox');
             const downloadBtn = document.getElementById('downloadBtn');
+            const player = document.getElementById('videoPlayer');
             
             resultBox.style.display = 'none';
+            player.style.display = 'none';
+            
             if(!urlInput) { alert('कृपया पहले लिंक पेस्ट करें!'); return; }
             
             const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -51,10 +64,16 @@
                 const data = await response.json();
                 
                 if(data.success && data.video_url) {
+                    // यहाँ हम असली लिंक सेट कर रहे हैं
                     downloadBtn.href = data.video_url;
+                    
+                    // प्लेयर में भी लिंक लोड कर रहे हैं
+                    player.src = data.video_url;
+                    player.style.display = 'block';
+                    
                     resultBox.style.display = 'block';
                 } else {
-                    alert('त्रुटि: ' + (data.error || 'वीडियो लिंक फ़िल्टर नहीं हो सका।'));
+                    alert('त्रुटि: ' + (data.error || 'वीडियो लिंक नहीं मिल सका।'));
                 }
             } catch(err) {
                 alert('सर्वर एरर: ' + err.message);
