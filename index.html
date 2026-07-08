@@ -15,11 +15,10 @@
         #resultBox { margin-top: 20px; display: none; }
         #resultBox p { color: #34d399; font-weight: bold; margin-bottom: 15px; font-size: 15px; }
         
-        /* मोबाइल और रील्स फॉर्मेट के लिए एकदम सटीक हाइट और स्क्रॉल-कंट्रोल */
         .player-container { 
             position: relative; 
             width: 100%; 
-            height: 580px; /* हाइट थोड़ी बढ़ाई ताकि प्लेयर पूरा फिट बैठे */
+            height: 580px; 
             border-radius: 10px; 
             overflow: hidden; 
             border: 2px solid #0891b2; 
@@ -38,13 +37,12 @@
         <h1>DramaBox Downloader & Player</h1>
         <p>क्लाउड पावर्ड - नो टर्मक्स रिक्वायर्ड</p>
         
-        <input type="text" id="dramaUrl" placeholder="यहाँ ड्राma लिंक पेस्ट करें...">
+        <input type="text" id="dramaUrl" placeholder="यहाँ ड्रामा लिंक पेस्ट करें...">
         <button onclick="getLink()">वीडियो लोड करें</button>
 
         <div id="resultBox">
             <p>✓ वीडियो सफलतापूर्वक लोड हो गया!</p>
             <div class="player-container">
-                <!-- ⚡ कुकीज़ और रीडायरेक्ट बैनर रोकने के लिए सैंडबॉक्स और कड़क अलाउ पॉलिसी जोड़ी है -->
                 <iframe id="dramaPlayer" src="" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin shrink-to-fit=yes"></iframe>
             </div>
         </div>
@@ -52,21 +50,22 @@
 
     <script>
         function getLink() {
-            const urlInput = document.getElementById('dramaUrl').value;
+            const urlInput = document.getElementById('dramaUrl').value.trim();
             const resultBox = document.getElementById('resultBox');
             const player = document.getElementById('dramaPlayer');
             
             resultBox.style.display = 'none';
             if(!urlInput) { alert('कृपया पहले लिंक पेस्ट करें!'); return; }
             
+            // ⚡ जुगाड़: अगर यूजर ऐप का डीप लिंक (app.dramaboxdb.com या android/open) डालेगा तो उसे यहीं रोक देंगे
+            if (urlInput.includes('android/open') || urlInput.includes('app.dramaboxdb.com')) {
+                alert('⚠️ सुरक्षा पाबंदी: यह एक ऐप-प्रोटेक्टेड डीप लिंक है जो ब्राउज़र में नहीं खुल सकता। कृपया क्रोम ब्राउज़र से कॉपी किया हुआ स्टैंडर्ड शेयर लिंक ही डालें!');
+                return;
+            }
+            
             try {
-                // लिंक को क्लीन करना और पैरामीटर्स निकालना
-                const cleanUrl = urlInput.trim();
-                const urlObj = new URL(cleanUrl);
-                
+                const urlObj = new URL(urlInput);
                 const bookId = urlObj.searchParams.get('bid') || urlObj.searchParams.get('bookId');
-                // अगर लिंक में cid (चैप्टर आईडी) या cindex है तो उसे लें, नहीं तो डिफ़ॉल्ट 0 या 1
-                const cid = urlObj.searchParams.get('cid');
                 const cindex = urlObj.searchParams.get('cindex') || '0';
                 
                 if (!bookId) {
@@ -74,11 +73,8 @@
                     return;
                 }
                 
-                // 🛠️ नया लाइव वेब-स्ट्रीम प्लेयर यूआरएल लॉजिक
+                // ओरिजिनल वेब प्लेयर स्ट्रीम पाथ
                 let embedUrl = `https://www.dramaboxdb.com/play?bid=${bookId}&cindex=${cindex}`;
-                if (cid) {
-                    embedUrl += `&cid=${cid}`;
-                }
                 
                 player.src = embedUrl;
                 resultBox.style.display = 'block';
