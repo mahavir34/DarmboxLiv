@@ -1,6 +1,7 @@
 const axios = require('axios');
 
 module.exports = async (req, res) => {
+    // CORS हेडर्स सेट करना ताकि फ्रंटएंड बिना किसी एरर के डेटा ले सके
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -11,59 +12,48 @@ module.exports = async (req, res) => {
 
     const shareUrl = req.query.url;
     if (!shareUrl) {
-        return res.status(400).json({ success: false, error: 'URL is missing' });
+        return res.status(400).json({ success: false, error: 'URL गायब है' });
     }
 
     try {
-        // 1. शेयर लिंक से ड्रामा की ID (bid) और एपिसोड नंबर निकालें
-        const urlParams = new URL(shareUrl);
-        const bookId = urlParams.searchParams.get('bid') || urlParams.searchParams.get('bookId');
-        const episodeNum = urlParams.searchParams.get('episodeNumber') || '1';
-
-        if (!bookId) {
-            return res.status(400).json({ success: false, error: 'लिंक में ड्रामा ID (bid) नहीं मिली' });
-        }
-
-        // 2. ड्रामाबॉक्स के ऑफिशियल मोबाइल गेटवे को हिट करें जहाँ से साइन्ड (Signed) टोकन मिलते हैं
-        const apiResponse = await axios.post('https://api.dramaboxapp.com/api/v1/theater/episode/video', {
-            theater_id: bookId,
-            episode_num: parseInt(episodeNum, 10)
-        }, {
-            headers: {
-                'User-Agent': 'DramaBox/2.4.0 (Android; 10; Mobile)',
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+        // ड्रामाबॉक्स के पेज का डेटा मोबाइल ब्राउज़र बनकर डाउनलोड करना
+        const response = await axios.get(shareUrl, {
+            headers: { 
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36'
             },
             timeout: 10000
         });
+        
+        const html = response.data;
+        
+        // पेज के अंदर से सभी वीडियो लिंक्स (.mp4 या .m3u8) को खोजना
+        const rawLinks = html.match(/https?:\/\/[^'"]+\.(?:mp4|m3u8)[^'"]/gi) || html.match(/https?:\/\/[^'"]+\.mp4\.jpg[^'"]/gi) || [];
+        let videoUrl = null;
 
-        const apiData = apiResponse.data;
-        let realUrl = null;
-
-        if (apiData && apiData.data) {
-            // मोबाइल रिस्पॉन्स से असली वैलिड मल्टिप्लायर या वीडियो पाथ निकालना
-            realUrl = apiData.data.video_url || apiData.data.play_url || apiData.data.m3u8_url;
-        }
-
-        // 3. बैकअप: अगर मोबाइल गेटवे काम न करे तो साधारण स्क्रैपिंग पर जाएँ
-        if (!realUrl) {
-            const webResponse = await axios.get(shareUrl, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10)' }
-            });
-            const html = webResponse.data;
-            const match = html.match(/current_episode_mp4_url\s*=\s*['"]([^'"]+)['"]/i) || html.match(/play_url\s*=\s*['"]([^'"]+)['"]/i);
-            if (match && match[1]) {
-                realUrl = match[1].replace(/\\/g, '');
+        for (let link of rawLinks) {
+            let cleanLink = link.replace(/\\/g, '').replace(/['"]/g, '');
+            
+            // थंबनेल, कवर और पोस्टर्स वाली इमेज को फ़िल्टर करके हटाना
+            if (!cleanLink.includes('cover') && !cleanLink.includes('poster') && !cleanLink.includes('thumb')) {
+                
+                // अगर पीछे नकली .jpg लगा है तो उसे काटकर शुद्ध .mp4 बनाना
+                if (cleanLink.endsWith('.jpg')) {
+                    cleanLink = cleanLink.substring(0, cleanLink.length - 4);
+                } else if (cleanLink.includes('.mp4.jpg')) {
+                    cleanLink = cleanLink.replace('.mp4.jpg', '.mp4');
+                }
+                
+                videoUrl = cleanLink;
+                break;
             }
         }
 
-        if (realUrl) {
-            return res.status(200).json({ success: true, video_url: realUrl });
+        if (videoUrl) {
+            return res.status(200).json({ success: true, video_url: videoUrl });
         } else {
-            return res.status(404).json({ success: false, error: 'वीडियो स्ट्रीम टोकन एक्सपायर हो चुका है या यह एक लॉक्ड एपिसोड है।' });
+            return res.status(404).json({ success: false, error: 'इस पेज में कोई चालू वीडियो स्ट्रीम लिंक नहीं मिला।' });
         }
-
     } catch (error) {
-        return res.status(500).json({ success: false, error: 'सर्वर रिस्पॉन्स फेल: ' + error.message });
+        return res.status(500).json({ success: false, error: 'क्लाउड फेच एरर: ' + error.message });
     }
 };
