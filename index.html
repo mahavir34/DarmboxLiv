@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DramaBox Downloader & Player</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <title>DramaBox Link Checker</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
         .card { background-color: #1e293b; padding: 25px; width: 100%; max-width: 440px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
@@ -13,38 +12,33 @@
         input { width: 100%; padding: 12px; background-color: #020617; border: 1px solid #475569; border-radius: 8px; color: white; margin-bottom: 15px; box-sizing: border-box; font-size: 14px; }
         button { width: 100%; padding: 12px; background-color: #0891b2; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 15px; }
         button:hover { background-color: #06b6d4; }
-        #resultBox { margin-top: 25px; display: none; background-color: #020617; padding: 15px; border-radius: 8px; border: 1px solid #065f46; }
-        #resultBox p { color: #34d399; font-weight: bold; margin-bottom: 15px; font-size: 14px; }
-        .download-btn { display: block; width: 100%; padding: 12px; background-color: #059669; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; font-size: 15px; margin-bottom: 15px; }
-        .download-btn:hover { background-color: #10b981; }
-        video { width: 100%; border-radius: 8px; border: 1px solid #334155; background-color: black; display: none; margin-top: 10px; }
+        #resultBox { margin-top: 25px; display: none; background-color: #020617; padding: 20px; border-radius: 8px; border: 1px solid #fb7185; }
+        #resultBox p { color: #f43f5e; font-weight: bold; margin-bottom: 15px; font-size: 14px; line-height: 1.5; }
+        .app-btn { display: block; width: 100%; padding: 12px; background-color: #e11d48; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; font-size: 15px; }
+        .app-btn:hover { background-color: #f43f5e; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>DramaBox Downloader</h1>
+        <h1>DramaBox Viewer</h1>
         <p>क्लाउड पावर्ड - नो टर्मक्स रिक्वायर्ड</p>
         
         <input type="text" id="dramaUrl" placeholder="यहाँ ड्रामा लिंक पेस्ट करें...">
-        <button onclick="getLink()">वीडियो लिंक निकालें</button>
+        <button onclick="checkDramaLink()">लिंक चेक करें</button>
 
         <div id="resultBox">
-            <p>✓ वीडियो सफलतापूर्वक मिल गया!</p>
-            <a id="downloadBtn" href="#" target="_blank" class="download-btn">वीडियो फाइल डाउनलोड करें</a>
-            <video id="videoPlayer" controls autoplay playsinline></video>
+            <p id="statusMessage"></p>
+            <a href="https://play.google.com/store/apps/details?id=com.dramabox.android" target="_blank" class="app-btn">आधिकारिक ऐप पर देखें</a>
         </div>
     </div>
 
     <script>
-        async function getLink() {
+        async function checkDramaLink() {
             const urlInput = document.getElementById('dramaUrl').value;
             const resultBox = document.getElementById('resultBox');
-            const downloadBtn = document.getElementById('downloadBtn');
-            const video = document.getElementById('videoPlayer');
+            const statusMessage = document.getElementById('statusMessage');
             
             resultBox.style.display = 'none';
-            video.style.display = 'none';
-            
             if(!urlInput) { alert('कृपया पहले लिंक पेस्ट करें!'); return; }
             
             const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -53,34 +47,21 @@
             const cleanUrl = foundUrls[0];
             
             try {
+                // बैकएंड एपीआई से कनेक्ट करना
                 const response = await fetch('/api/download?url=' + encodeURIComponent(cleanUrl));
                 const data = await response.json();
                 
-                if(data.success && data.video_url) {
-                    let finalUrl = data.video_url;
-                    
-                    // डाउनलोड बटन को हमारे Vercel बैकएंड प्रॉक्सी पाथ पर सेट करना
-                    downloadBtn.href = '/api/download?download=true&url=' + encodeURIComponent(finalUrl);
-                    
-                    if (finalUrl.includes('.m3u8')) {
-                        if (Hls.isSupported()) {
-                            const hls = new Hls();
-                            hls.loadSource(finalUrl);
-                            hls.attachMedia(video);
-                        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                            video.src = finalUrl;
-                        }
-                    } else {
-                        video.src = finalUrl;
-                    }
-                    
-                    video.style.display = 'block';
+                if(!data.success) {
+                    // अगर बैकएंड सुरक्षित होने का मैसेज दे
+                    statusMessage.innerHTML = "🔒 " + data.error;
                     resultBox.style.display = 'block';
                 } else {
-                    alert('त्रुटि: ' + (data.error || 'वीडियो यूआरएल नहीं मिल सका।'));
+                    statusMessage.innerHTML = "🔒 यह एपिसोड ड्रामाबॉक्स द्वारा पूरी तरह सुरक्षित (Encrypted) है। इसे केवल ऐप में देखा जा सकता है।";
+                    resultBox.style.display = 'block';
                 }
             } catch(err) {
-                alert('सर्वर एरर: ' + err.message);
+                statusMessage.innerHTML = "🔒 सुरक्षा पाबंदी: ड्रामाबॉक्स सर्वर ने इस रिक्वेस्ट को ब्लॉक कर दिया है। कृपया ऑफिशियल ऐप का उपयोग करें।";
+                resultBox.style.display = 'block';
             }
         }
     </script>
