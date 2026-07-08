@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DramaBox Video Downloader</title>
+    <title>DramaBox Downloader & Player</title>
+    <!-- HLS Player Script ताकि .m3u8 स्ट्रीम भी मोबाइल पर चल सके -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         body { font-family: Arial, sans-serif; background-color: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
         .card { background-color: #1e293b; padding: 25px; width: 100%; max-width: 440px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
@@ -14,10 +16,9 @@
         button:hover { background-color: #06b6d4; }
         #resultBox { margin-top: 25px; display: none; background-color: #020617; padding: 15px; border-radius: 8px; border: 1px solid #065f46; }
         #resultBox p { color: #34d399; font-weight: bold; margin-bottom: 15px; font-size: 14px; }
-        .download-btn { display: block; width: 100%; padding: 12px; background-color: #059669; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; font-size: 15px; margin-bottom: 10px; }
+        .download-btn { display: block; width: 100%; padding: 12px; background-color: #059669; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; font-size: 15px; margin-bottom: 15px; }
         .download-btn:hover { background-color: #10b981; }
-        .steps { font-size: 12px; color: #cbd5e1; text-align: left; line-height: 1.6; background-color: #1e293b; padding: 10px; border-radius: 6px; border: 1px solid #334155; margin-top: 10px; }
-        .steps strong { color: #fb7185; }
+        video { width: 100%; border-radius: 8px; border: 1px solid #334155; background-color: black; display: none; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -26,48 +27,66 @@
         <p>क्लाउड पावर्ड - नो टर्मक्स रिक्वायर्ड</p>
         
         <input type="text" id="dramaUrl" placeholder="यहाँ ड्रामा लिंक पेस्ट करें...">
-        <button onclick="processLink()">वीडियो लिंक जनरेट करें</button>
+        <button onclick="getLink()">वीडियो लिंक निकालें</button>
 
         <div id="resultBox">
-            <p>✓ वीडियो सोर्स लिंक सफलतापूर्वक तैयार है!</p>
-            <a id="downloadBtn" href="#" target="_blank" class="download-btn">नये टैब में खोलें और डाउनलोड करें</a>
+            <p>✓ वीडियो सफलतापूर्वक मिल गया!</p>
+            <!-- डाउनलोड बटन -->
+            <a id="downloadBtn" href="#" target="_blank" class="download-btn" download="drama_video.mp4">वीडियो फाइल डाउनलोड करें</a>
             
-            <div class="steps">
-                <strong>📥 डाउनलोड कैसे करें:</strong><br>
-                1. ऊपर दिए गए हरे बटन पर क्लिक करें (नया टैब खुलेगा)।<br>
-                2. अगर वहाँ सीधे वीडियो प्ले होता है, तो नीचे कोने में बने <strong>थ्री-डॉट्स (Three Dots)</strong> पर क्लिक करके <strong>Download</strong> चुन लें।<br>
-                3. अगर सीधे वीडियो नहीं आता, तो उस पेज पर कहीं भी <strong>Long Press (दबाकर रखें)</strong> और <strong>Save Video As</strong> पर क्लिक कर दें।
-            </div>
+            <!-- इन-ऐप प्लेयर -->
+            <video id="videoPlayer" controls autoplay playsinline></video>
         </div>
     </div>
 
     <script>
-        function processLink() {
+        async function getLink() {
             const urlInput = document.getElementById('dramaUrl').value;
             const resultBox = document.getElementById('resultBox');
             const downloadBtn = document.getElementById('downloadBtn');
+            const video = document.getElementById('videoPlayer');
             
             resultBox.style.display = 'none';
+            video.style.display = 'none';
+            
             if(!urlInput) { alert('कृपया पहले लिंक पेस्ट करें!'); return; }
             
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const foundUrls = urlInput.match(urlRegex);
+            if (!foundUrls) { alert('कृपया एक सही URL लिंक डालें!'); return; }
+            const cleanUrl = foundUrls[0];
+            
             try {
-                const urlParams = new URL(urlInput);
-                const bookId = urlParams.searchParams.get('bid') || urlParams.searchParams.get('bookId');
-                const episodeNum = urlParams.searchParams.get('episodeNumber') || '1';
+                // यहाँ फ्रंटएंड सीधे बैकएंड एपीआई (/api/download) को कॉल कर रहा है
+                const response = await fetch('/api/download?url=' + encodeURIComponent(cleanUrl));
+                const data = await response.json();
                 
-                if (!bookId) {
-                    alert('त्रुटि: लिंक में ड्रामा ID (bid) नहीं मिली!');
-                    return;
+                if(data.success && data.video_url) {
+                    let finalUrl = data.video_url;
+                    
+                    // बटन में असली यूआरएल डालना
+                    downloadBtn.href = finalUrl;
+                    
+                    // प्लेयर में वीडियो लोड करने का लॉजिक (MP4 या M3U8 दोनों के लिए)
+                    if (finalUrl.includes('.m3u8')) {
+                        if (Hls.isSupported()) {
+                            const hls = new Hls();
+                            hls.loadSource(finalUrl);
+                            hls.attachMedia(video);
+                        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                            video.src = finalUrl;
+                        }
+                    } else {
+                        video.src = finalUrl;
+                    }
+                    
+                    video.style.display = 'block';
+                    resultBox.style.display = 'block';
+                } else {
+                    alert('त्रुटि: ' + (data.error || 'वीडियो यूआरएल नहीं मिल सका।'));
                 }
-                
-                // यह ड्रामाबॉक्स का डायरेक्ट CDN रिसोर्स गेटवे लिंक है जो बिना किसी वेब इंटरफेस के सीधे मीडिया फ़ाइल तक ले जाता है
-                const targetUrl = `https://www.dramaboxdb.com/index/play/index.html?bid=${bookId}&episodeNumber=${episodeNum}`;
-                
-                downloadBtn.href = targetUrl;
-                resultBox.style.display = 'block';
-                
-            } catch (err) {
-                alert('कृपया एक सही ड्रामा यूआरएल लिंक डालें!');
+            } catch(err) {
+                alert('सर्वर एरर: ' + err.message);
             }
         }
     </script>
