@@ -1,7 +1,6 @@
 const axios = require('axios');
 
 module.exports = async (req, res) => {
-    // CORS हेडर्स ताकि फ्रंटएंड बिना किसी ब्लॉक के डेटा पढ़ सके
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -16,25 +15,43 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // ड्रामाबॉक्स पेज को फ़ेच करने की कोशिश
+        // अगर लिंक StardustTV का है
+        if (shareUrl.includes('stardust') || shareUrl.includes('onelink.me')) {
+            const response = await axios.get(shareUrl, {
+                headers: { 
+                    // कंप्यूटर यूजर एजेंट ताकि यह प्ले स्टोर पर न भागे, सीधा वेब पेज खोले
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                },
+                timeout: 10000
+            });
+            
+            const html = response.data;
+            // .mp4 या .m3u8 लिंक्स को कोड में खोजना
+            const match = html.match(/https?:\/\/[^'"]+\.(?:mp4|m3u8)[^'"]/i);
+            
+            if (match && match[0]) {
+                let videoLink = match[0].replace(/\\/g, '').replace(/['"]/g, '');
+                return res.status(200).json({ success: true, video_url: videoLink });
+            } else {
+                return res.status(444).json({ success: false, error: 'StardustTV वीडियो सोर्स लिंक कोड में नहीं मिल सका।' });
+            }
+        }
+
+        // अगर लिंक ड्रामाबॉक्स (DramaBox) का है
         const response = await axios.get(shareUrl, {
-            headers: { 
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36'
-            },
+            headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 10)' },
             timeout: 8000
         });
         
-        // सर्वर सुरक्षित होने पर हमेशा यूजर-फ्रेंडली एरर रिस्पॉन्स ही भेजेगा
         return res.status(200).json({ 
             success: false, 
-            error: 'यह एपिसोड ड्रामाबॉक्स AWS क्लाउड द्वारा सुरक्षित है। क्रैश और एरर से बचने के लिए इसे ऑफिशियल ऐप पर चलाएं।' 
+            error: 'यह एपिसोड ड्रामाबॉक्स AWS क्लाउड द्वारा सुरक्षित है। क्रैश से बचने के लिए इसे ऑफिशियल ऐप पर चलाएं।' 
         });
 
     } catch (error) {
-        // अगर ड्रामाबॉक्स 403 या 402 एरर फेंके, तो उसे यहाँ साफ़ मैसेज में बदल देना
         return res.status(200).json({ 
             success: false, 
-            error: 'सुरक्षा पाबंदी (AWS CloudFront Blocked): यह वीडियो पूरी तरह एन्क्रिप्टेड है और इसे सर्वर के जरिए डाउनलोड नहीं किया जा सकता।' 
+            error: 'यह वीडियो पूरी तरह एन्क्रिप्टेड है और इसे सर्वर के जरिए डाउनलोड नहीं किया जा सकता।' 
         });
     }
 };
