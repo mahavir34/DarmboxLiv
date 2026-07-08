@@ -13,7 +13,7 @@
         button { width: 100%; padding: 12px; background-color: #0891b2; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 15px; }
         button:hover { background-color: #06b6d4; }
         #resultBox { margin-top: 25px; display: none; background-color: #020617; padding: 20px; border-radius: 8px; border: 1px solid #fb7185; }
-        #resultBox p { color: #f43f5e; font-weight: bold; margin-bottom: 15px; font-size: 14px; line-height: 1.5; }
+        #resultBox p { color: #fb7185; font-weight: bold; margin-bottom: 15px; font-size: 14px; line-height: 1.5; }
         .app-btn { display: block; width: 100%; padding: 12px; background-color: #e11d48; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; font-size: 15px; }
         .app-btn:hover { background-color: #f43f5e; }
     </style>
@@ -28,7 +28,7 @@
 
         <div id="resultBox">
             <p id="statusMessage"></p>
-            <a href="https://play.google.com/store/apps/details?id=com.dramabox.android" target="_blank" class="app-btn">आधिकारिक ऐप पर देखें</a>
+            <a href="https://play.google.com/store/search?q=DramaBox&c=apps" target="_blank" class="app-btn">आधिकारिक ऐप पर देखें</a>
         </div>
     </div>
 
@@ -47,16 +47,15 @@
             const cleanUrl = foundUrls[0];
             
             try {
-                // बैकएंड एपीआई से कनेक्ट करना
+                // बैकएंड एपीआई (/api/download.js) से जुड़ाव
                 const response = await fetch('/api/download?url=' + encodeURIComponent(cleanUrl));
                 const data = await response.json();
                 
                 if(!data.success) {
-                    // अगर बैकएंड सुरक्षित होने का मैसेज दे
                     statusMessage.innerHTML = "🔒 " + data.error;
                     resultBox.style.display = 'block';
                 } else {
-                    statusMessage.innerHTML = "🔒 यह एपिसोड ड्रामाबॉक्स द्वारा पूरी तरह सुरक्षित (Encrypted) है। इसे केवल ऐप में देखा जा सकता है।";
+                    statusMessage.innerHTML = "🔒 यह एपिसोड ड्रामाबॉक्स द्वारा पूरी तरह सुरक्षित (Encrypted) है। क्रैश और एरर से बचने के लिए इसे ऑफिशियल ऐप पर चलाएं।";
                     resultBox.style.display = 'block';
                 }
             } catch(err) {
