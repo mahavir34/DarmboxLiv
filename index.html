@@ -28,7 +28,7 @@
 
         <div id="resultBox">
             <p id="statusMessage"></p>
-            <a href="https://play.google.com/store/search?q=DramaBox&c=apps" target="_blank" class="app-btn">आधिकारिक ऐप पर देखें</a>
+            <a href="https://play.google.com/store/search?q=DramaBox&c=apps" target="_blank" class="app-btn" id="storeLink">आधिकारिक ऐप पर देखें</a>
         </div>
     </div>
 
@@ -37,6 +37,7 @@
             const urlInput = document.getElementById('dramaUrl').value;
             const resultBox = document.getElementById('resultBox');
             const statusMessage = document.getElementById('statusMessage');
+            const storeLink = document.getElementById('storeLink');
             
             resultBox.style.display = 'none';
             if(!urlInput) { alert('कृपया पहले लिंक पेस्ट करें!'); return; }
@@ -46,9 +47,12 @@
             if (!foundUrls) { alert('कृपया एक सही URL लिंक डालें!'); return; }
             const cleanUrl = foundUrls[0];
             
+            // कैशे को पूरी तरह से बायपास करने के लिए लिंक के पीछे रैंडम टाइमस्टैम्प जोड़ना
+            storeLink.href = "https://play.google.com/store/search?q=DramaBox&c=apps&cb=" + new Date().getTime();
+            
             try {
-                // बैकएंड एपीआई (/api/download.js) से जुड़ाव
-                const response = await fetch('/api/download?url=' + encodeURIComponent(cleanUrl));
+                // नए टाइमस्टैम्प के साथ एपीआई रिक्वेस्ट भेजना ताकि पुराना डेटा साफ हो जाए
+                const response = await fetch('/api/download?url=' + encodeURIComponent(cleanUrl) + '&t=' + new Date().getTime());
                 const data = await response.json();
                 
                 if(!data.success) {
