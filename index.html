@@ -3,100 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drama & TV Link Extractor</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <title>DramaBox Downloader & Player</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
-        .card { background-color: #1e293b; padding: 25px; width: 100%; max-width: 440px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
+        .card { background-color: #1e293b; padding: 25px; width: 100%; max-width: 460px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
         h1 { color: #22d3ee; font-size: 24px; margin-bottom: 5px; }
         p { color: #94a3b8; font-size: 13px; margin-bottom: 25px; }
         input { width: 100%; padding: 12px; background-color: #020617; border: 1px solid #475569; border-radius: 8px; color: white; margin-bottom: 15px; box-sizing: border-box; font-size: 14px; }
         button { width: 100%; padding: 12px; background-color: #0891b2; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 15px; }
         button:hover { background-color: #06b6d4; }
-        #resultBox { margin-top: 25px; display: none; background-color: #020617; padding: 20px; border-radius: 8px; border: 1px solid #334155; }
-        #statusMessage { font-weight: bold; margin-bottom: 15px; font-size: 14px; line-height: 1.5; }
-        .app-btn { display: block; width: 100%; padding: 12px; background-color: #e11d48; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; font-size: 15px; display: none; }
-        .download-btn { display: block; width: 100%; padding: 12px; background-color: #059669; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; box-sizing: border-box; font-size: 15px; display: none; margin-bottom: 15px; }
-        video { width: 100%; border-radius: 8px; border: 1px solid #334155; background-color: black; display: none; margin-top: 10px; }
+        #resultBox { margin-top: 20px; display: none; }
+        #resultBox p { color: #34d399; font-weight: bold; margin-bottom: 15px; font-size: 15px; }
+        
+        /* मोबाइल और रील्स फॉर्मेट के लिए एकदम सटीक हाइट और स्क्रॉल-कंट्रोल */
+        .player-container { 
+            position: relative; 
+            width: 100%; 
+            height: 580px; /* हाइट थोड़ी बढ़ाई ताकि प्लेयर पूरा फिट बैठे */
+            border-radius: 10px; 
+            overflow: hidden; 
+            border: 2px solid #0891b2; 
+            background-color: black; 
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+        .player-container iframe { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+        }
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>Media Link Extractor</h1>
-        <p>DramaBox & StardustTV सपोर्टेड</p>
+        <h1>DramaBox Downloader & Player</h1>
+        <p>क्लाउड पावर्ड - नो टर्मक्स रिक्वायर्ड</p>
         
-        <input type="text" id="dramaUrl" placeholder="यहाँ वीडियो लिंक पेस्ट करें...">
-        <button onclick="processMediaLink()">लिंक चेक करें</button>
+        <input type="text" id="dramaUrl" placeholder="यहाँ ड्राma लिंक पेस्ट करें...">
+        <button onclick="getLink()">वीडियो लोड करें</button>
 
         <div id="resultBox">
-            <p id="statusMessage"></p>
-            <a href="https://play.google.com/store/search?q=DramaBox&c=apps" target="_blank" class="app-btn" id="dramaboxBtn">आधिकारिक ऐप पर देखें</a>
-            <a href="#" target="_blank" class="download-btn" id="stardustDownloadBtn" download="video.mp4">वीडियो डाउनलोड करें</a>
-            <video id="videoPlayer" controls autoplay playsinline></video>
+            <p>✓ वीडियो सफलतापूर्वक लोड हो गया!</p>
+            <div class="player-container">
+                <!-- ⚡ कुकीज़ और रीडायरेक्ट बैनर रोकने के लिए सैंडबॉक्स और कड़क अलाउ पॉलिसी जोड़ी है -->
+                <iframe id="dramaPlayer" src="" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin shrink-to-fit=yes"></iframe>
+            </div>
         </div>
     </div>
 
     <script>
-        async function processMediaLink() {
+        function getLink() {
             const urlInput = document.getElementById('dramaUrl').value;
             const resultBox = document.getElementById('resultBox');
-            const statusMessage = document.getElementById('statusMessage');
-            const dramaboxBtn = document.getElementById('dramaboxBtn');
-            const stardustBtn = document.getElementById('stardustDownloadBtn');
-            const video = document.getElementById('videoPlayer');
+            const player = document.getElementById('dramaPlayer');
             
-            // सब कुछ रीसेट करें
             resultBox.style.display = 'none';
-            dramaboxBtn.style.display = 'none';
-            stardustBtn.style.display = 'none';
-            video.style.display = 'none';
-            
             if(!urlInput) { alert('कृपया पहले लिंक पेस्ट करें!'); return; }
             
-            const urlRegex = /(https?:\/\/[^\s]+)/g;
-            const foundUrls = urlInput.match(urlRegex);
-            if (!foundUrls) { alert('कृपया एक सही URL लिंक डालें!'); return; }
-            const cleanUrl = foundUrls[0];
-            
             try {
-                statusMessage.style.color = "#cbd5e1";
-                statusMessage.innerHTML = "🔄 लिंक की जांच की जा रही है, कृपया रुकें...";
-                resultBox.style.display = 'block';
-
-                const response = await fetch('/api/download?url=' + encodeURIComponent(cleanUrl) + '&t=' + new Date().getTime());
-                const data = await response.json();
+                // लिंक को क्लीन करना और पैरामीटर्स निकालना
+                const cleanUrl = urlInput.trim();
+                const urlObj = new URL(cleanUrl);
                 
-                if (data.success && data.video_url) {
-                    // अगर StardustTV का असली लिंक मिल गया
-                    statusMessage.style.color = "#34d399";
-                    statusMessage.innerHTML = "✓ StardustTV वीडियो लिंक सफलतापूर्वक मिल गया!";
-                    
-                    stardustBtn.href = data.video_url;
-                    stardustBtn.style.display = 'block';
-                    
-                    // प्लेयर में लोड करना (.mp4 या .m3u8)
-                    if (data.video_url.includes('.m3u8')) {
-                        if (Hls.isSupported()) {
-                            const hls = new Hls();
-                            hls.loadSource(data.video_url);
-                            hls.attachMedia(video);
-                        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                            video.src = data.video_url;
-                        }
-                    } else {
-                        video.src = data.video_url;
-                    }
-                    video.style.display = 'block';
-                } else {
-                    // अगर ड्रामाबॉक्स का सुरक्षित लिंक है
-                    statusMessage.style.color = "#fb7185";
-                    statusMessage.innerHTML = "🔒 " + (data.error || "यह एपिसोड सुरक्षित है। इसे ऑफिशियल ऐप पर चलाएं।");
-                    dramaboxBtn.style.display = 'block';
+                const bookId = urlObj.searchParams.get('bid') || urlObj.searchParams.get('bookId');
+                // अगर लिंक में cid (चैप्टर आईडी) या cindex है तो उसे लें, नहीं तो डिफ़ॉल्ट 0 या 1
+                const cid = urlObj.searchParams.get('cid');
+                const cindex = urlObj.searchParams.get('cindex') || '0';
+                
+                if (!bookId) {
+                    alert('त्रुटि: लिंक में ड्रामा ID (bid) नहीं मिली!');
+                    return;
                 }
-            } catch(err) {
-                statusMessage.style.color = "#fb7185";
-                statusMessage.innerHTML = "🔒 सुरक्षा पाबंदी: इस वीडियो को केवल ऑफिशियल ऐप पर देखा जा सकता है।";
-                dramaboxBtn.style.display = 'block';
+                
+                // 🛠️ नया लाइव वेब-स्ट्रीम प्लेयर यूआरएल लॉजिक
+                let embedUrl = `https://www.dramaboxdb.com/play?bid=${bookId}&cindex=${cindex}`;
+                if (cid) {
+                    embedUrl += `&cid=${cid}`;
+                }
+                
+                player.src = embedUrl;
+                resultBox.style.display = 'block';
+                
+            } catch (err) {
+                alert('कृपया एक सही ड्रामा यूआरएल लिंक डालें!');
             }
         }
     </script>
