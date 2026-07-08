@@ -1,31 +1,116 @@
-async function getLink() {
-    const urlInput = document.getElementById('dramaUrl').value.trim();
-    const resultBox = document.getElementById('resultBox');
-    const player = document.getElementById('dramaPlayer');
-    
-    resultBox.style.display = 'none';
-    if(!urlInput) { alert('कृपया पहले लिंक पेस्ट करें!'); return; }
-    
-    // ⚡ अगर लिंक Klipist का है तो सीधा बैकएंड से असली वीडियो लिंक निकालो
-    if (urlInput.includes('klipist.com')) {
-        try {
-            alert('🔄 Klipist वीडियो लिंक निकाला जा रहा है, कृपया रुकें...');
-            const response = await fetch('/api/klipist?url=' + encodeURIComponent(urlInput));
-            const data = await response.json();
-            
-            if (data.success && data.video_url) {
-                alert('✓ असली वीडियो लिंक मिल गया!');
-                // आप चाहें तो इस लिंक को सीधे प्लेयर में सेट कर सकते हैं या डाउनलोड के लिए दे सकते हैं
-                player.src = data.video_url;
-                resultBox.style.display = 'block';
-            } else {
-                alert(data.error || 'वीडियो लिंक नहीं मिल पाया।');
-            }
-        } catch (err) {
-            alert('त्रुटि: लिंक चेक करने में समस्या हुई।');
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DramaBox & Klipist Downloader</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
+        .card { background-color: #1e293b; padding: 25px; width: 100%; max-width: 460px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
+        h1 { color: #22d3ee; font-size: 24px; margin-bottom: 5px; }
+        p { color: #94a3b8; font-size: 13px; margin-bottom: 25px; }
+        input { width: 100%; padding: 12px; background-color: #020617; border: 1px solid #475569; border-radius: 8px; color: white; margin-bottom: 15px; box-sizing: border-box; font-size: 14px; }
+        button { width: 100%; padding: 12px; background-color: #0891b2; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 15px; }
+        button:hover { background-color: #06b6d4; }
+        #resultBox { margin-top: 20px; display: none; }
+        #resultBox p { color: #34d399; font-weight: bold; margin-bottom: 15px; font-size: 15px; }
+        
+        .player-container { 
+            position: relative; 
+            width: 100%; 
+            height: 580px; 
+            border-radius: 10px; 
+            overflow: hidden; 
+            border: 2px solid #0891b2; 
+            background-color: black; 
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
         }
-        return;
-    }
-    
-    // ड्रामाबॉक्स का पुराना कोड इसके नीचे वैसा ही रहेगा...
-}
+        .player-container iframe { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>DramaBox & Klipist Player</h1>
+        <p>क्लाउड पावर्ड - नो टर्मक्स रिक्वायर्ड</p>
+        
+        <input type="text" id="dramaUrl" placeholder="यहाँ ड्रामा या Klipist लिंक पेस्ट करें...">
+        <button onclick="getLink()">वीडियो लोड करें</button>
+
+        <div id="resultBox">
+            <p id="statusTxt">✓ वीडियो सफलतापूर्वक लोड हो गया!</p>
+            <div class="player-container">
+                <iframe id="dramaPlayer" src="" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin shrink-to-fit=yes"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function getLink() {
+            const urlInput = document.getElementById('dramaUrl').value.trim();
+            const resultBox = document.getElementById('resultBox');
+            const player = document.getElementById('dramaPlayer');
+            const statusTxt = document.getElementById('statusTxt');
+            
+            resultBox.style.display = 'none';
+            if(!urlInput) { alert('कृपया पहले लिंक पेस्ट करें!'); return; }
+            
+            // ⚡ 1. अगर लिंक Klipist का है तो बैकएंड से असली लिंक निकालकर प्लेयर में लोड करेगा
+            if (urlInput.includes('klipist.com')) {
+                try {
+                    statusTxt.innerText = "🔄 Klipist लिंक चेक किया जा रहा है...";
+                    statusTxt.style.color = "#22d3ee";
+                    resultBox.style.display = 'block';
+
+                    const response = await fetch('/api/klipist?url=' + encodeURIComponent(urlInput));
+                    const data = await response.json();
+                    
+                    if (data.success && data.video_url) {
+                        statusTxt.innerText = "✓ Klipist वीडियो सफलतापूर्वक लोड हो गया!";
+                        statusTxt.style.color = "#34d399";
+                        player.src = data.video_url;
+                    } else {
+                        alert(data.error || 'वीडियो लिंक नहीं मिल पाया।');
+                        resultBox.style.display = 'none';
+                    }
+                } catch (err) {
+                    alert('त्रुटि: लिंक चेक करने में समस्या हुई।');
+                    resultBox.style.display = 'none';
+                }
+                return;
+            }
+            
+            // ⚡ 2. अगर लिंक ड्रामाबॉक्स का ऐप डीप लिंक है तो उसे रोकेगा
+            if (urlInput.includes('android/open') || urlInput.includes('app.dramaboxdb.com')) {
+                alert('⚠️ सुरक्षा पाबंदी: यह एक ऐप-प्रोटेक्टेड डीप लिंक है। कृपया क्रोम ब्राउज़र वाला स्टैंडर्ड शेयर लिंक इस्तेमाल करें!');
+                return;
+            }
+            
+            // ⚡ 3. ड्रामाबॉक्स का सामान्य लिंक होने पर प्लेयर यूआरएल सेट करेगा
+            try {
+                const urlObj = new URL(urlInput);
+                const bookId = urlObj.searchParams.get('bid') || urlObj.searchParams.get('bookId');
+                const cindex = urlObj.searchParams.get('cindex') || '0';
+                
+                if (!bookId) {
+                    alert('त्रुटि: लिंक में ड्रामा ID (bid) नहीं मिली!');
+                    return;
+                }
+                
+                statusTxt.innerText = "✓ वीडियो सफलतापूर्वक लोड हो गया!";
+                statusTxt.style.color = "#34d399";
+                
+                let embedUrl = `https://www.dramaboxdb.com/play?bid=${bookId}&cindex=${cindex}`;
+                player.src = embedUrl;
+                resultBox.style.display = 'block';
+                
+            } catch (err) {
+                alert('कृपया एक सही ड्रामा यूआरएल लिंक डालें!');
+            }
+        }
+    </script>
+</body>
+</html>
