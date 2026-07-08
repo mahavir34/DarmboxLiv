@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DramaBox Downloader & Player</title>
-    <!-- HLS Player Script ताकि .m3u8 स्ट्रीम भी मोबाइल पर चल सके -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         body { font-family: Arial, sans-serif; background-color: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; }
@@ -31,10 +30,7 @@
 
         <div id="resultBox">
             <p>✓ वीडियो सफलतापूर्वक मिल गया!</p>
-            <!-- डाउनलोड बटन -->
-            <a id="downloadBtn" href="#" target="_blank" class="download-btn" download="drama_video.mp4">वीडियो फाइल डाउनलोड करें</a>
-            
-            <!-- इन-ऐप प्लेयर -->
+            <a id="downloadBtn" href="#" target="_blank" class="download-btn">वीडियो फाइल डाउनलोड करें</a>
             <video id="videoPlayer" controls autoplay playsinline></video>
         </div>
     </div>
@@ -57,17 +53,15 @@
             const cleanUrl = foundUrls[0];
             
             try {
-                // यहाँ फ्रंटएंड सीधे बैकएंड एपीआई (/api/download) को कॉल कर रहा है
                 const response = await fetch('/api/download?url=' + encodeURIComponent(cleanUrl));
                 const data = await response.json();
                 
                 if(data.success && data.video_url) {
                     let finalUrl = data.video_url;
                     
-                    // बटन में असली यूआरएल डालना
-                    downloadBtn.href = finalUrl;
+                    // डाउनलोड बटन को हमारे Vercel बैकएंड प्रॉक्सी पाथ पर सेट करना
+                    downloadBtn.href = '/api/download?download=true&url=' + encodeURIComponent(finalUrl);
                     
-                    // प्लेयर में वीडियो लोड करने का लॉजिक (MP4 या M3U8 दोनों के लिए)
                     if (finalUrl.includes('.m3u8')) {
                         if (Hls.isSupported()) {
                             const hls = new Hls();
