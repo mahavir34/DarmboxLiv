@@ -15,41 +15,56 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // Klipist पेज का कोड मंगाना
         const response = await axios.get(targetUrl, {
             headers: { 
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
             },
             timeout: 10000
         });
         
         const html = response.data;
         
-        // 🔍 जुगाड़ 1: सीधे वीडियो एक्सटेंशन खोजना
-        let match = html.match(/https?:\/\/[^'"]+\.(?:mp4|m3u8|webm)[^'"]/i);
+        // 🔍 एडवांस पैटर्न 1: JSON कॉन्फ़िगरेशन या डेटा-एट्रीब्यूट के अंदर से वीडियो लिंक्स खोजना
+        let videoLink = null;
         
-        // 🔍 जुगाड़ 2: अगर सीधा लिंक न मिले, तो प्लेयर का वीडीयो सोर्स टैग या डेटा अट्रिब्यूट खोजना
-        if (!match) {
-            match = html.match(/src=["'](https?:\/\/.*?\/embed\/.*?)["']/i) || 
-                    html.match(/data-src=["'](https?:\/\/.*?\.mp4.*?)["']/i);
+        // स्क्रिप्ट और JSON डेटा ब्लॉक को टारगेट करना
+        const jsonMatch = html.match(/["'](?:contentUrl|downloadUrl|file|src)["']\s*:\s*["'](https?:\/\/.*?\.(?:mp4|m3u8|webm).*?)["']/i);
+        if (jsonMatch && jsonMatch[1]) {
+            videoLink = jsonMatch[1];
         }
         
-        if (match && match[0]) {
-            let videoLink = match[0].replace(/\\/g, '').replace(/['"]/g, '');
-            // अगर मैच में सिर्फ src="" का हिस्सा आया है तो क्लीन करना
-            if(videoLink.startsWith('src=')) {
-                videoLink = videoLink.replace('src=', '');
+        // 🔍 एडवांस पैटर्न 2: सामान्य HTML5 वीडियो सोर्स टैग्स को खोजना
+        if (!videoLink) {
+            const srcMatch = html.match(/<source\s+[^>]*src=["'](https?:\/\/.*?)["']/i);
+            if (srcMatch && srcMatch[1]) {
+                videoLink = srcMatch[1];
             }
-            return res.status(200).json({ success: true, video_url: videoLink });
+        }
+        
+        // 🔍 एडवांस पैटर्न 3: रेगुलर एक्सप्रेशन के ज़रिए रॉ मीडिया स्ट्रिंग्स को पकड़ना
+        if (!videoLink) {
+            const rawMatch = html.match(/https?:\/\/[^'"]+?\.(?:mp4|m3u8)[^'"]*/i);
+            if (rawMatch && rawMatch[0]) {
+                videoLink = rawMatch[0];
+            }
+        }
+        
+        if (videoLink) {
+            // एस्केप कैरेक्टर्स (जैसे \/) को साफ़ करना
+            let cleanLink = videoLink.replace(/\\/g, '').replace(/['"]/g, '').trim();
+            return res.status(200).json({ success: true, video_url: cleanLink });
         } else {
-            // 🔒 अगर कुछ न मिले, तो सुरक्षा के लिए ओरिजिनल लिंक को ही एम्बेड प्लेयर की तरह इस्तेमाल करने की कोशिश करना
-            return res.status(200).json({ success: true, video_url: targetUrl });
+            return res.status(444).json({ 
+                success: false, 
+                error: 'सुरक्षा लॉक: Klipist ने इस वीडियो के डायरेक्ट सोर्स को एन्क्रिप्ट कर दिया है। आप इस वीडियो का लिंक सीधे अपने ऐप के इन-ऐप वेबव्यू (WebView Browser) में चला सकते हैं!' 
+            });
         }
 
     } catch (error) {
         return res.status(500).json({ 
             success: false, 
-            error: 'सर्वर कनेक्ट करने में समस्या हुई।' 
+            error: 'सर्वर रिस्पॉन्स एरर या लिंक इनवैलिड है।' 
         });
     }
 };
